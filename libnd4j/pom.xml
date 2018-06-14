@@ -1,0 +1,421 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  ~ /*
+  ~  * Copyright 2017 Skymind,Inc.
+  ~  *
+  ~  *    Licensed under the Apache License, Version 2.0 (the "License");
+  ~  *    you may not use this file except in compliance with the License.
+  ~  *    You may obtain a copy of the License at
+  ~  *
+  ~  *        http://www.apache.org/licenses/LICENSE-2.0
+  ~  *
+  ~  *    Unless required by applicable law or agreed to in writing, software
+  ~  *    distributed under the Licese is distributed on an "AS IS" BASIS,
+  ~  *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~  *    See the License for the specific language governing permissions and
+  ~  *    limitations under the License.
+  ~  */
+  ~
+  -->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <parent>
+        <groupId>org.deeplearning4j</groupId>
+        <artifactId>deeplearning4j</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.nd4j</groupId>
+    <artifactId>libnd4j</artifactId>
+    <packaging>pom</packaging>
+
+    <name>libnd4j</name>
+    <description>The C++ engine that powers the scientific computing library ND4J - n-dimensional
+        arrays for Java
+    </description>
+    <url>http://nd4j.org/</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>agibsonccc</id>
+            <name>Adam Gibson</name>
+            <email>adam@skymind.io</email>
+        </developer>
+        <developer>
+            <id>raver119</id>
+            <name>raver119</name>
+        </developer>
+        <developer>
+            <id>saudet</id>
+            <name>Samuel Audet</name>
+        </developer>
+    </developers>
+
+    <properties>
+        <libnd4j.chip>cpu</libnd4j.chip>
+        <libnd4j.platform>${os.name}-${os.arch}</libnd4j.platform>
+        <libnd4j.extension></libnd4j.extension>
+        <libnd4j.cuda></libnd4j.cuda>
+        <libnd4j.compute></libnd4j.compute>
+        <libnd4j.classifier>${libnd4j.platform}</libnd4j.classifier>
+        <libnd4j.tests.phase>test</libnd4j.tests.phase>
+        <libnd4j.test.is.release.build>true</libnd4j.test.is.release.build>
+    </properties>
+
+    <build>
+        <extensions>
+            <extension>
+                <groupId>org.kuali.maven.wagons</groupId>
+                <artifactId>maven-s3-wagon</artifactId>
+                <version>1.2.1</version>
+            </extension>
+        </extensions>
+
+        <plugins>
+            <plugin>
+                <groupId>org.bytedeco</groupId>
+                <artifactId>javacpp</artifactId>
+                <version>${javacpp.version}</version>
+                <configuration>
+                    <properties>${libnd4j.platform}</properties>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>javacpp.cppbuild.compile</id>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${libnd4j.cpu.compile.skip}</skip>
+                            <buildCommand>
+                                <program>bash</program>
+                                <argument>${project.basedir}/buildnativeoperations.sh</argument>
+                                <argument>--chip</argument>
+                                <argument>${libnd4j.chip}</argument>
+                                <argument>--platform</argument>
+                                <argument>${libnd4j.platform}</argument>
+                                <argument>--chip-extension</argument>
+                                <argument>${libnd4j.extension}</argument>
+                                <argument>--chip-version</argument>
+                                <argument>${libnd4j.cuda}</argument>
+                                <argument>--compute</argument>
+                                <argument>${libnd4j.compute}</argument>
+                            </buildCommand>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>2.6</version>
+                <executions>
+                    <execution>
+                        <id>javacpp.cppbuild.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <configuration>
+                            <filesets>
+                                <fileset>
+                                    <directory>blasbuild</directory>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.0.0</version>
+                <configuration>
+                    <descriptors>
+                        <descriptor>assembly.xml</descriptor>
+                    </descriptors>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+
+                <executions>
+                    <execution>
+                        <id>libnd4j.test.run</id>
+                        <phase>${libnd4j.tests.phase}</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${libnd4j.test.skip}</skip>
+                            <executable>bash</executable>
+                            <workingDirectory>${basedir}/tests_cpu</workingDirectory>
+                            <arguments>
+                                <argument>run_tests.sh</argument>
+                                <argument>--release=${libnd4j.test.is.release.build}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>chip</id>
+            <activation>
+                <property>
+                    <name>libnd4j.chip</name>
+                </property>
+            </activation>
+            <properties>
+                <libnd4j.classifier>${libnd4j.platform}-${libnd4j.chip}</libnd4j.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>extension</id>
+            <activation>
+                <property>
+                    <name>libnd4j.extension</name>
+                </property>
+            </activation>
+            <properties>
+                <libnd4j.classifier>${libnd4j.platform}-${libnd4j.extension}</libnd4j.classifier>
+            </properties>
+        </profile>
+        <profile>
+            <id>cuda</id>
+            <activation>
+                <property>
+                    <name>libnd4j.cuda</name>
+                </property>
+            </activation>
+            <properties>
+                <!-- Leave libnd4j.chip as is to build CPU version as well. -->
+                <!-- <libnd4j.chip>cuda</libnd4j.chip> -->
+                <libnd4j.classifier>${libnd4j.platform}-cuda-${libnd4j.cuda}</libnd4j.classifier>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.bytedeco</groupId>
+                        <artifactId>javacpp</artifactId>
+                        <version>${javacpp.version}</version>
+                        <configuration>
+                            <properties>${libnd4j.platform}</properties>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>javacpp.cppbuild.compile.cuda</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                                <configuration>
+                                    <skip>${libnd4j.cuda.compile.skip}</skip>
+                                    <buildCommand>
+                                        <program>bash</program>
+                                        <argument>${project.basedir}/buildnativeoperations.sh
+                                        </argument>
+                                        <argument>--chip</argument>
+                                        <argument>cuda</argument>
+                                        <argument>--platform</argument>
+                                        <argument>${libnd4j.platform}</argument>
+                                        <argument>--chip-extension</argument>
+                                        <argument>${libnd4j.extension}</argument>
+                                        <argument>--chip-version</argument>
+                                        <argument>${libnd4j.cuda}</argument>
+                                        <argument>--compute</argument>
+                                        <argument>${libnd4j.compute}</argument>
+                                    </buildCommand>
+                                    <workingDirectory>${project.basedir}</workingDirectory>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- If someone knows a better way to do this, please do let me know! -->
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <name>linux</name>
+                </os>
+            </activation>
+            <properties>
+                <os.name>linux</os.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>macosx</id>
+            <activation>
+                <os>
+                    <name>mac os x</name>
+                </os>
+            </activation>
+            <properties>
+                <os.name>macosx</os.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <os.name>windows</os.name>
+            </properties>
+        </profile>
+        <profile>
+            <id>i386</id>
+            <activation>
+                <os>
+                    <arch>i386</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>i486</id>
+            <activation>
+                <os>
+                    <arch>i486</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>i586</id>
+            <activation>
+                <os>
+                    <arch>i586</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>i686</id>
+            <activation>
+                <os>
+                    <arch>i686</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>x86</id>
+            <activation>
+                <os>
+                    <arch>x86</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>amd64</id>
+            <activation>
+                <os>
+                    <arch>amd64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>x86-64</id>
+            <activation>
+                <os>
+                    <arch>x86-64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>x86_64</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>arm</id>
+            <activation>
+                <os>
+                    <arch>arm</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.arch>arm</os.arch>
+            </properties>
+        </profile>
+        <profile>
+            <id>clean-tests</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/tests_cpu/Makefile</exists>
+                </file>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.6.0</version>
+
+                        <executions>
+                            <execution>
+                                <id>libnd4j.test.clean</id>
+                                <phase>clean</phase>
+                                <goals>
+                                    <goal>exec</goal>
+                                </goals>
+                                <configuration>
+                                    <executable>make</executable>
+                                    <workingDirectory>${basedir}/tests_cpu</workingDirectory>
+                                    <arguments>
+                                        <argument>clean</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
